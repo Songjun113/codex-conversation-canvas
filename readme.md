@@ -1,5 +1,11 @@
 # Conversation Canvas / 对话脉络
 
+Independent source repository: [Songjun113/codex-conversation-canvas](https://github.com/Songjun113/codex-conversation-canvas).
+
+Originally developed as an optional tool for [CodexPlusPlus](https://github.com/BigPizzaV3/CodexPlusPlus), with upstream integration proposed in [PR #2128](https://github.com/BigPizzaV3/CodexPlusPlus/pull/2128). This repository is the standalone development and distribution home. It preserves the plugin's two original commits (with rewritten hashes because the directory is now the repository root), their authors and dates, and the AGPL-3.0-only license.
+
+To install the current 0.3.2 script, download [public/canvas.user.js](public/canvas.user.js) using GitHub's **Download raw file** action, then follow the Codex++ installation steps below. This is an experimental version; see the compatibility limits before choosing an organization channel.
+
 An opt-in Codex++ userscript for following a long conversation as a task tree. Open **对话脉络** in the conversation header to view goals, alternative approaches, failed attempts and the current direction on a zoomable canvas. Click a node for its evidence and jump to the original message.
 
 ## Features
@@ -15,7 +21,8 @@ An opt-in Codex++ userscript for following a long conversation as a task tree. O
 Requires Node.js 22 or newer. No npm dependencies are required.
 
 ```powershell
-cd tools/conversation-canvas
+git clone https://github.com/Songjun113/codex-conversation-canvas.git
+cd codex-conversation-canvas
 npm test
 npm run build
 ```
