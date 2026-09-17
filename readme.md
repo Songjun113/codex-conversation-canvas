@@ -1,6 +1,12 @@
 # Conversation Canvas / 对话脉络
 
-Independent source repository: [Songjun113/codex-conversation-canvas](https://github.com/Songjun113/codex-conversation-canvas).
+Turn long Codex conversations into a task tree you can explore, review and trace back to the original messages.
+
+![Conversation Canvas overview: a project branches into stopped and active attempts, implementation and validation, with source context alongside.](docs/assets/conversation-canvas-hero.png)
+
+*Illustrative feature overview / 功能示意图，非实际界面截图。Requires Codex++；当前安装仍依赖 Codex++。*
+
+[Install / 安装](#install-in-codex) · [Features / 功能](#features) · [Compatibility / 兼容性](#architecture-and-compatibility) · [Report a bug / 反馈问题](https://github.com/Songjun113/codex-conversation-canvas/issues)
 
 Originally developed as an optional tool for [CodexPlusPlus](https://github.com/BigPizzaV3/CodexPlusPlus), with upstream integration proposed in [PR #2128](https://github.com/BigPizzaV3/CodexPlusPlus/pull/2128). This repository is the standalone development and distribution home. It preserves the plugin's two original commits (with rewritten hashes because the directory is now the repository root), their authors and dates, and the AGPL-3.0-only license.
 
