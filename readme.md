@@ -10,7 +10,7 @@ Turn long Codex conversations into a task tree you can explore, review and trace
 
 Originally developed as an optional tool for [CodexPlusPlus](https://github.com/BigPizzaV3/CodexPlusPlus), with upstream integration proposed in [PR #2128](https://github.com/BigPizzaV3/CodexPlusPlus/pull/2128). This repository is the standalone development and distribution home. It preserves the plugin's two original commits (with rewritten hashes because the directory is now the repository root), their authors and dates, and the AGPL-3.0-only license.
 
-To install the current 0.3.2 script, download [public/canvas.user.js](public/canvas.user.js) using GitHub's **Download raw file** action, then follow the Codex++ installation steps below. This is an experimental version; see the compatibility limits before choosing an organization channel.
+To install the current 0.3.3 script, download [public/canvas.user.js](public/canvas.user.js) using GitHub's **Download raw file** action, then follow the Codex++ installation steps below. This is an experimental version; see the compatibility limits before choosing an organization channel.
 
 An opt-in Codex++ userscript for following a long conversation as a task tree. Open **对话脉络** in the conversation header to view goals, alternative approaches, failed attempts and the current direction on a zoomable canvas. Click a node for its evidence and jump to the original message.
 
@@ -56,7 +56,7 @@ The model identifies the tree structure. A saved chain remains a chain; the rend
 - `src/canvas-panel.js`: native header entry, canvas UI and settings; `src/canvas-store.js`: local persistence.
 - `build-userscript.mjs`: dependency-free userscript bundler.
 
-The desktop adapters use private exports and explicitly reviewed build mappings. **Windows Codex Desktop 26.901.6511 with Codex++ 1.2.56** retains the original history, HTTP and background-organization adapters. Version **0.3.2** adds history and HTTP bindings for **Desktop 26.908.9136.0**, fixing attempts to import a removed asset after an application update. Background organization on that newer build is not yet supported: select an external API in settings. Reading history no longer requires the background-submission interface. Unknown builds report an unsupported-version message rather than guessing export names. The new bindings have static bundle inspection and automated fixture coverage; a live desktop end-to-end check remains pending. A future built-in integration should expose stable host APIs for paginated history, background organization and message navigation.
+The desktop adapters use private exports and explicitly reviewed build mappings. **Windows Codex Desktop 26.901.6511 with Codex++ 1.2.56** retains the original history, HTTP and background-organization adapters. Version **0.3.3** includes history and HTTP bindings for **Desktop 26.908.9136.0** and adds bindings for **26.915.3509.0**, fixing attempts to import a removed asset after an application update. Background organization on those newer builds is not yet supported: select an external API in settings. Reading history no longer requires the background-submission interface. Unknown builds report an unsupported-version message rather than guessing export names. The new bindings have static bundle inspection and automated fixture coverage; a live desktop end-to-end check remains pending. A future built-in integration should expose stable host APIs for paginated history, background organization and message navigation.
 
 The script covers user/assistant text, not tool output or image semantics. Sending a batch to an external API shares that text with the configured provider. An interrupted request may still incur provider charges; retries can be billed again. Completed batches are retained. No service keys, session files, local diagnostics, extracted desktop bundles or personal annotations are included here.
 
@@ -71,7 +71,7 @@ Open `http://127.0.0.1:47834/host?thread=11111111-1111-1111-1111-111111111111&tr
 
 ## Validation
 
-70 distributable Node tests cover runtime discovery, versioned bindings, failed-load retry, independent history access, history paging, long-message coverage, persistence, invalid sources, task isolation, paused requests, SSE boundaries, retries and 10,000-node tree layout. The original development workspace also has a legacy local-server test, which is intentionally excluded with that obsolete server.
+71 distributable Node tests cover runtime discovery, versioned bindings, failed-load retry, independent history access, history paging, long-message coverage, persistence, invalid sources, task isolation, paused requests, SSE boundaries, retries and 10,000-node tree layout. The original development workspace also has a legacy local-server test, which is intentionally excluded with that obsolete server.
 
 Synthetic browser checks cover strict CSP (`frame-src 'none'`, `connect-src 'none'`), zoom/pan, folding, source navigation and one-click recovery after 503. Earlier desktop testing confirmed background organization and source navigation on the target version. The 0.3.1 API speed change has not been benchmarked against a live DeepSeek request. No claim is made here that the upstream Rust workspace tests or clippy have run for this addition.
 
