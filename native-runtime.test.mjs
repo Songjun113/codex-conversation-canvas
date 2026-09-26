@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {nativeAssetCandidates,bindNativeRuntime,createNativeLoader} from './native-runtime.mjs';
 const current='app://-/assets/app-initial-bcc2ff475eb6.js';
+test('26.924 loads reviewed shared module and preserves lazy live bindings',async()=>{
+  let ready=false;
+  const module={HC(){assert.ok(ready);return 'manager';},JC(){ready=true;},$mt(){module.Zmt={getInstance:()=>({fetch(){}})};module.nC={httpFetch:{}};}};
+  const loader=createNativeLoader({discover:()=>['app://-/assets/app-initial-58e226417aae.js'],importModule:async url=>{assert.equal(url,'app://-/assets/app-shared-d93bebbb48ab.js');return module;}});
+  const native=await loader();native.kr();assert.equal(native.ESt(),'manager');native.lGt();assert.ok(native.jR.httpFetch);assert.equal(typeof native.cGt.getInstance().fetch,'function');assert.equal(native.Mr,undefined);
+});
 test('discovers the loaded application asset without accepting external scripts',()=>{
   const doc={querySelectorAll:()=>[{src:current},{src:'https://example.org/app-initial-bad.js'}]};
   assert.deepEqual(nativeAssetCandidates(doc,{getEntriesByType:()=>[{name:current}]}),[current]);
@@ -26,7 +32,7 @@ test('unknown builds never receive guessed export aliases or stale build fallbac
 });
 test('missing resource timing falls back across reviewed builds',async()=>{
   const calls=[];const loader=createNativeLoader({discover:()=>[],importModule:async url=>{calls.push(url);if(!url.endsWith('app-initial-f87238153a19.js'))throw Error('missing');return {ESt:'old'};}});
-  assert.equal((await loader()).ESt,'old');assert.equal(calls.length,3);
+  assert.equal((await loader()).ESt,'old');assert.equal(calls.length,4);
 });
 
 test('26.915 binds history and lazy HTTP exports without enabling unverified side submissions',async()=>{

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Conversation canvas
 // @description  可缩放的任务树画布与原文定位
-// @version      0.3.3
+// @version      0.3.4
 // ==/UserScript==
 (function installCanvas() {
   if(!document.body){window.addEventListener('DOMContentLoaded',installCanvas,{once:true});return;}
@@ -15,7 +15,7 @@
   /* canvas-interaction */
   /* canvas-annotations */
   function diagnostic(stage,detail={}){
-    try{window.__codexSessionDeleteBridge?.('/diagnostics/log',{event:'conversation_canvas',detail:{version:'0.3.3',stage,...detail}})?.catch(()=>{});}catch{}
+    try{window.__codexSessionDeleteBridge?.('/diagnostics/log',{event:'conversation_canvas',detail:{version:'0.3.4',stage,...detail}})?.catch(()=>{});}catch{}
   }
   diagnostic('native_installed',{pageOrigin:location.origin});
   const host=document.createElement('div');host.id='conversation-canvas-host';
@@ -49,10 +49,10 @@
     #jump-status{font-size:11px;color:var(--color-token-text-secondary,#777)}.message{border-bottom:1px solid var(--panel-border);padding:14px 0;scroll-margin-top:12px}.message pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}.message.highlight{outline:4px solid var(--panel-border);background:var(--color-token-list-hover-background,#80808018)}
 
   /* canvas-style */
-  </style><aside role="complementary" aria-label="对话脉络" data-version="0.3.3"><div class="panel-header"><div class="heading"><strong>对话脉络</strong><p id="connection" role="status">当前对话的主线与分支</p></div><button id="retry" aria-label="重新连接" title="重新连接">↻</button><button id="close" aria-label="关闭画布" title="关闭">×</button></div><div class="canvas-body"><div class="canvas-toolbar"><button id="map-tab" class="active">任务树</button><button id="source-tab">对话原文</button><button id="pause-organize" hidden>暂停整理</button><button id="organize" title="GPT-5.6 Luna · 中 · 后台分批整理">整理脉络</button></div><p id="organization-status" role="status" hidden></p><div class="canvas-scroll"><section id="map-view"><div class="map-topbar"><div class="map-heading"><h2 id="title">当前对话</h2><div id="subtitle"></div></div><div class="tree-actions"><button id="expand-tree">展开全部</button><button id="collapse-tree">收起分支</button><button id="locate-current">当前推进</button><button id="fit-canvas">适应视图</button></div></div><div id="graph" role="region" aria-label="任务树画布，滚轮缩放，拖拽平移" tabindex="0"></div><div id="pending-tray"></div><div class="canvas-bottom"><span class="canvas-help">拖动画布平移 · 滚轮缩放 · 点击节点查看依据</span><div class="zoom-tools"><button id="zoom-out" aria-label="缩小画布">−</button><button id="canvas-zoom" title="恢复 100% 缩放">100%</button><button id="zoom-in" aria-label="放大画布">+</button></div></div></section><section id="source-view" hidden><div class="tree-actions"><button id="source-prev">上一页</button><span id="source-page-info"></span><button id="source-next">下一页</button><button id="source-list">消息列表</button></div><div id="transcript"></div></section></div><section id="details" aria-label="节点详情" hidden><div class="detail-head"><small id="detail-status"></small><button id="close-detail" aria-label="关闭节点详情">×</button></div><h2 id="detail-title"></h2><p id="detail-path"></p><p id="detail-description"></p><div id="source-actions"></div><p id="jump-status" role="status"></p></section></div></aside>`;
+  </style><aside role="complementary" aria-label="对话脉络" data-version="0.3.4"><div class="panel-header"><div class="heading"><strong>对话脉络</strong><p id="connection" role="status">当前对话的主线与分支</p></div><button id="retry" aria-label="重新连接" title="重新连接">↻</button><button id="close" aria-label="关闭画布" title="关闭">×</button></div><div class="canvas-body"><div class="canvas-toolbar"><button id="map-tab" class="active">任务树</button><button id="source-tab">对话原文</button><button id="pause-organize" hidden>暂停整理</button><button id="organize" title="GPT-5.6 Luna · 中 · 后台分批整理">整理脉络</button></div><p id="organization-status" role="status" hidden></p><div class="canvas-scroll"><section id="map-view"><div class="map-topbar"><div class="map-heading"><h2 id="title">当前对话</h2><div id="subtitle"></div></div><div class="tree-actions"><button id="expand-tree">展开全部</button><button id="collapse-tree">收起分支</button><button id="locate-current">当前推进</button><button id="fit-canvas">适应视图</button></div></div><div id="graph" role="region" aria-label="任务树画布，滚轮缩放，拖拽平移" tabindex="0"></div><div id="pending-tray"></div><div class="canvas-bottom"><span class="canvas-help">拖动画布平移 · 滚轮缩放 · 点击节点查看依据</span><div class="zoom-tools"><button id="zoom-out" aria-label="缩小画布">−</button><button id="canvas-zoom" title="恢复 100% 缩放">100%</button><button id="zoom-in" aria-label="放大画布">+</button></div></div></section><section id="source-view" hidden><div class="tree-actions"><button id="source-prev">上一页</button><span id="source-page-info"></span><button id="source-next">下一页</button><button id="source-list">消息列表</button></div><div id="transcript"></div></section></div><section id="details" aria-label="节点详情" hidden><div class="detail-head"><small id="detail-status"></small><button id="close-detail" aria-label="关闭节点详情">×</button></div><h2 id="detail-title"></h2><p id="detail-path"></p><p id="detail-description"></p><div id="source-actions"></div><p id="jump-status" role="status"></p></section></div></aside>`;
   document.body.append(host);
   const pane=shadow.querySelector('aside');
-  pane.dataset.version='0.3.3';
+  pane.dataset.version='0.3.4';
   const settingsButton=document.createElement('button');settingsButton.id='organizer-settings';settingsButton.textContent='⚙';settingsButton.title='整理设置';settingsButton.setAttribute('aria-label','整理设置');
   shadow.getElementById('retry').before(settingsButton);
   const settingsForm=document.createElement('form');settingsForm.id='api-settings';settingsForm.hidden=true;settingsForm.setAttribute('aria-label','整理设置');
@@ -62,11 +62,11 @@
   const loadingText=shadow.getElementById('connection'),retry=shadow.getElementById('retry');
   // The entry lives in the real toolbar. The panel is separate to avoid its paint containment.
   const toggle=document.createElement('button');toggle.id='conversation-canvas-toggle';toggle.type='button';
-  toggle.className='user-select-none no-drag cursor-interaction flex shrink-0 items-center gap-1 whitespace-nowrap rounded-lg text-token-button-tertiary-foreground h-token-button-composer px-2 py-0 text-base leading-[18px]';
+  toggle.className='user-select-none no-drag cursor-interaction flex shrink-0 items-center justify-center rounded-lg text-token-button-tertiary-foreground text-base leading-[18px]';
   toggle.setAttribute('aria-label','对话脉络');toggle.setAttribute('aria-expanded','false');toggle.title='打开当前对话的任务树画布';
-  toggle.innerHTML='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 9c0 3 5 3 10 3"/></svg><span>对话脉络</span>';
+  toggle.innerHTML='<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 9c0 3 5 3 10 3"/></svg>';
   const entryStyle=document.createElement('style');
-  entryStyle.textContent='#conversation-canvas-toggle{position:static;pointer-events:auto;-webkit-app-region:no-drag;display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font:inherit;font-size:12px;height:28px;padding:0 8px;border:1px solid transparent;border-radius:6px;color:var(--color-token-text-secondary,inherit);background:transparent;cursor:pointer}#conversation-canvas-toggle:hover,#conversation-canvas-toggle[aria-expanded="true"]{color:var(--color-token-text-primary,inherit);background:var(--color-token-list-hover-background,#80808018)}#conversation-canvas-toggle:focus-visible{outline:2px solid currentColor;outline-offset:2px}#conversation-canvas-toggle[hidden]{display:none}';
+  entryStyle.textContent='#conversation-canvas-toggle{position:static;pointer-events:auto;-webkit-app-region:no-drag;display:inline-flex;align-items:center;justify-content:center;align-self:center;flex-shrink:0;font:inherit;width:32px;height:32px;padding:0;border:1px solid transparent;border-radius:6px;color:var(--color-token-text-secondary,inherit);background:transparent;cursor:pointer}#conversation-canvas-toggle:hover,#conversation-canvas-toggle[aria-expanded="true"]{color:var(--color-token-text-primary,inherit);background:var(--color-token-list-hover-background,#80808018)}#conversation-canvas-toggle:focus-visible{outline:2px solid currentColor;outline-offset:2px}#conversation-canvas-toggle[hidden]{display:none}';
   document.head.append(entryStyle);
   let toolbar=null,ownedGroup=null,mountFrame=0;
   const boundsObserver=new ResizeObserver(updatePanelBounds);
@@ -77,12 +77,12 @@
     const header=surface?.closest('header')||[...document.querySelectorAll('header')].find(visible);
     const container=surface||header;
     if(!container){toggle.remove();return;}
-    let group=[...container.querySelectorAll('.ms-auto')].find(visible);
+    let group=[...container.querySelectorAll('[data-app-shell-header-obstacle].ms-auto')].filter(visible).at(-1)||[...container.querySelectorAll('.ms-auto')].filter(visible).at(-1);
     if(!group){
       if(!ownedGroup||ownedGroup.parentElement!==container){ownedGroup?.remove();ownedGroup=document.createElement('div');ownedGroup.className='ms-auto flex shrink-0 items-center gap-1.5';ownedGroup.setAttribute('data-app-shell-header-obstacle','true');ownedGroup.style.cssText='margin-left:auto;display:flex;flex-shrink:0;align-items:center;pointer-events:auto';container.append(ownedGroup);}
       group=ownedGroup;
     }
-    if(toggle.parentElement!==group)group.append(toggle);
+    if(toggle.parentElement!==group)group.prepend(toggle);
     const nextToolbar=header||surface;
     if(toolbar!==nextToolbar){boundsObserver.disconnect();if(nextToolbar)boundsObserver.observe(nextToolbar);toolbar=nextToolbar;}
     toggle.hidden=!currentId();

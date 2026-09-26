@@ -4,7 +4,9 @@ export const nativeBuilds={
   'app-initial-f87238153a19.js':{ESt:'ESt',kr:'kr',Mr:'Mr',Q1:'Q1',lGt:'lGt',cGt:'cGt',jR:'jR'},
   'app-initial-bcc2ff475eb6.js':{ESt:'EDt',kr:'MDt',lGt:'hJt',cGt:'mJt',jR:'TW'},
   'app-initial-f61fcec072b5.js':{ESt:'Yqt',kr:'tJt',lGt:'_in',cGt:'hin',jR:'Y9'},
+  'app-initial-58e226417aae.js':{ESt:'HC',kr:'JC',lGt:'$mt',cGt:'Zmt',jR:'nC'},
 };
+const nativeModuleFiles={'app-initial-58e226417aae.js':'app-shared-d93bebbb48ab.js'};
 export function nativeAssetCandidates(doc=globalThis.document,perf=globalThis.performance){
   const urls=[...Array.from(doc?.querySelectorAll?.('script[src],link[rel="modulepreload"][href]')||[],e=>e.src||e.href),
     ...(perf?.getEntriesByType?.('resource')||[]).map(e=>e.name)];
@@ -29,7 +31,8 @@ export function createNativeLoader({discover=nativeAssetCandidates,importModule=
         const filename=url.split('/').pop();
         if(!nativeBuilds[filename])continue;
         let module;
-        try{module=await importModule(url);}catch{continue;}
+        const moduleUrl=nativeModuleFiles[filename]?'app://-/assets/'+nativeModuleFiles[filename]:url;
+        try{module=await importModule(moduleUrl);}catch{continue;}
         return bindNativeRuntime(module,filename);
       }
       throw Error(discovered.some(url=>!nativeBuilds[url.split('/').pop()])
