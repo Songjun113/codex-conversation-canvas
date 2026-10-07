@@ -78,7 +78,7 @@ test('paused API request resumes once, does not persist secret, changing profile
   let calls=0,finish;const checkpoints=[];
   const runner=createApiOrganizer({maxRetries:0,request:async(url,options)=>{
     calls++;assert.equal(url,'https://provider.example/v1/chat/completions');assert.equal(options.headers.Authorization,'Bearer secret-test-key');
-    assert.deepEqual(JSON.parse(options.body),{model:'example-model',stream:true,messages:[{role:'user',content:'synthetic prompt'}]});
+    assert.deepEqual(JSON.parse(options.body),{model:'example-model',stream:true,max_tokens:8192,messages:[{role:'user',content:'synthetic prompt'}]});
     return new Promise(resolve=>{finish=()=>resolve({choices:[{message:{content:'ok'}}]});});
   }});
   const session={sideId:'old-native',profile:'native'},abort=new AbortController();

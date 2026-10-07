@@ -1,6 +1,6 @@
 {
   "name": "codex-conversation-canvas",
-  "version": "0.3.4",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -8,8 +8,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "node build-userscript.mjs",
-    "test": "node --test native-runtime.test.mjs model.test.mjs bridge-data.test.mjs organize.test.mjs native-history.test.mjs long-organizer.test.mjs external-api.test.mjs tree.test.mjs context-lookup.test.mjs tree-canvas.test.mjs distribution.test.mjs",
-    "dev": "node dev/embedding-harness.mjs"
+    "build": "node build-userscript.mjs && node standalone/build.mjs",
+    "test": "node --test native-runtime.test.mjs model.test.mjs bridge-data.test.mjs organize.test.mjs native-history.test.mjs long-organizer.test.mjs external-api.test.mjs tree.test.mjs context-lookup.test.mjs tree-canvas.test.mjs distribution.test.mjs standalone/*.test.mjs tree-review.test.mjs parallel-briefs.test.mjs global-arranger.test.mjs",
+    "dev": "node dev/embedding-harness.mjs",
+    "start": "node standalone/build.mjs && node standalone/server.mjs",
+    "test:standalone": "node --test standalone/*.test.mjs",
+    "demo:standalone": "node standalone/build.mjs && node standalone/demo.mjs",
+    "desktop": "node standalone/build.mjs && node standalone/desktop.mjs",
+    "dev:desktop": "node standalone/build.mjs && node dev/desktop-harness.mjs"
   }
 }

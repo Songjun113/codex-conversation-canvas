@@ -9,7 +9,7 @@ export function apiEndpoint(raw){
 
 export function apiConfig(input){
   const channel=input?.channel==='external'?'external':'native';
-  const value={channel,baseUrl:String(input?.baseUrl||'').trim(),model:String(input?.model||'').trim(),key:String(input?.key||'').trim(),remember:input?.remember===true,speed:input?.speed==='provider'?'provider':'fast',revision:input?.revision||crypto.randomUUID()};
+  const value={channel,baseUrl:String(input?.baseUrl||'').trim(),model:String(input?.model||'').trim(),key:String(input?.key||'').trim(),remember:input?.remember===true,concurrency:Math.max(1,Math.min(128,Math.floor(Number(input?.concurrency))||4)),speed:input?.speed==='provider'?'provider':'fast',revision:input?.revision||crypto.randomUUID()};
   if(channel==='external'){
     value.endpoint=apiEndpoint(value.baseUrl);
     if(!value.model||value.model.length>200)throw Error('请填写 API 的模型名称');
@@ -19,8 +19,8 @@ export function apiConfig(input){
 }
 
 export function storedApiConfig(config){
-  const {channel,baseUrl,model,remember,speed,revision}=config;
-  return {channel,baseUrl,model,remember,speed,revision,...remember?{key:config.key}:{}};
+  const {channel,baseUrl,model,remember,speed,revision,concurrency}=config;
+  return {channel,baseUrl,model,remember,speed,revision,concurrency,...remember?{key:config.key}:{}};
 }
 
 export function apiError(error){
@@ -29,11 +29,11 @@ export function apiError(error){
   const code=Number(error?.status??error?.responseStatus);
   const hint={401:'密钥无效或已过期',403:'接口拒绝访问，请检查权限',404:'地址或模型不存在',408:'接口请求超时',413:'本批资料超过接口大小限制',429:'接口限流或额度不足'}[code];
   // Provider messages can echo request contents and Authorization; never display them.
-  return Object.assign(Error(hint?`API ${code}：${hint}`:code>=400?`API 请求失败（HTTP ${code}），请检查服务状态`:'API 连接失败，请检查地址、网络及服务状态'),{retryable:!code||code===408||code===429||code>=500});
+  return Object.assign(Error(hint?`API ${code}：${hint}`:code>=400?`API 请求失败（HTTP ${code}），请检查服务状态`:'API 连接失败，请检查地址、网络及服务状态'),{reduceBatch:code===413,retryable:!code||code===408||code===429||code>=500});
 }
 
 export function apiRequestBody(config,prompt){
-  const body={model:config.model,stream:true,messages:[{role:'user',content:prompt}]};
+  const body={model:config.model,stream:true,max_tokens:8192,messages:[{role:'user',content:prompt}]};
   // Only send provider-specific options to the documented official endpoint.
   if(new URL(config.endpoint).hostname==='api.deepseek.com'&&/^deepseek-v4-(flash|pro)$/.test(config.model)&&config.speed!=='provider')body.thinking={type:'disabled'};
   return body;
@@ -51,18 +51,19 @@ export async function readApiResponse(response,signal,progress=()=>{}){
     const data=line.slice(5).trim();if(!data)return;if(data==='[DONE]'){done=true;return;}
     let value;try{value=JSON.parse(data);}catch{throw Object.assign(Error('API 流式数据格式无效，本批未提交'),{canvasApiLocal:true,retryable:true});}
     if(value.error)throw Object.assign(Error('API 流式生成中断，本批未提交'),{canvasApiLocal:true,retryable:true});
-    const choice=value.choices?.[0];if(choice?.delta?.content)content+=choice.delta.content;
+    const choice=value.choices?.[0];if(choice?.delta?.content){content+=choice.delta.content;if(content.length>256*1024)throw Object.assign(Error('API 实际结果过长，本批将缩小后重试'),{canvasApiLocal:true,reduceBatch:true});}
     if(choice?.finish_reason)finish=choice.finish_reason;
     if(choice?.delta?.refusal)throw Object.assign(Error('API 未能生成本批整理结果'),{canvasApiLocal:true});
   };
   try{
     for(;;){
       const part=await waitForApi(reader.read(),signal);if(part.done)break;
-      size+=part.value.byteLength;if(size>4*1024*1024)throw Object.assign(Error('API 响应超过大小限制'),{canvasApiLocal:true});
+      size+=part.value.byteLength;if(size>64*1024*1024)throw Object.assign(Error('API 传输量超过上限，本批将缩小后重试'),{canvasApiLocal:true,reduceBatch:true});
       const text=decoder.decode(part.value,{stream:true});
       if(!sse){raw+=text;if(/^\s*(data:|:)/.test(raw)){sse=true;buffer=raw;raw='';}}
       else buffer+=text;
-      if(sse){let end;while((end=buffer.indexOf('\n'))>=0){consume(buffer.slice(0,end).replace(/\r$/,''));buffer=buffer.slice(end+1);}}
+      if(sse){let end;while((end=buffer.indexOf('\n'))>=0){if(end>2*1024*1024)throw Object.assign(Error('API 单条流事件过大'),{canvasApiLocal:true,reduceBatch:true});consume(buffer.slice(0,end).replace(/\r$/,''));buffer=buffer.slice(end+1);}}
+      if((sse?buffer.length:raw.length)>2*1024*1024)throw Object.assign(Error('API 单条数据过大，本批将缩小后重试'),{canvasApiLocal:true,reduceBatch:true});
       progress({bytes:size,chars:content.length});if(done)break;
     }
     const tail=decoder.decode();if(sse){buffer+=tail;if(buffer.trim())consume(buffer.replace(/\r$/,''));
@@ -75,10 +76,11 @@ export async function readApiResponse(response,signal,progress=()=>{}){
 
 export function completionText(body){
   const choice=body?.choices?.[0];
-  if(choice?.finish_reason==='length')throw Error('API 输出达到长度上限，本批未提交；请使用输出容量更大的模型');
+  if(choice?.finish_reason==='length')throw Object.assign(Error('API 输出达到长度上限，本批将缩小后重试'),{canvasApiLocal:true,reduceBatch:true});
   if(choice?.finish_reason==='content_filter'||choice?.message?.refusal)throw Error('API 未能生成本批整理结果');
   const content=choice?.message?.content;
   const value=typeof content==='string'?content:Array.isArray(content)?content.filter(p=>p?.type==='text').map(p=>p.text||'').join(''):'';
+  if(value.length>256*1024)throw Object.assign(Error('API 实际结果过长，本批将缩小后重试'),{canvasApiLocal:true,reduceBatch:true});
   if(!value.trim())throw Error('API 未返回有效的 choices[0].message.content，请确认兼容 Chat Completions');
   return value;
 }
@@ -99,8 +101,8 @@ export function createApiOrganizer({request,timeoutMs=300000,maxRetries=2,retryD
   const dispose=()=>{for(const entry of requests.values())entry.controller.abort(closed());requests.clear();};
   async function run(config,prompt,requestId,session,onSession,signal,progress=()=>{}){
     signal?.throwIfAborted();
-    const profile=`external:${config.revision}`,slot=profile,key=`${profile}:${requestId}`;
-    if(session.profile!==profile){for(const name of Object.keys(session))delete session[name];session.profile=profile;}
+    const parallelSlot=session.parallelSlot,profile=`external:${config.revision}`,slot=profile+':'+(parallelSlot||'serial'),key=`${profile}:${requestId}`;
+    if(session.profile!==profile){for(const name of Object.keys(session))delete session[name];session.profile=profile;if(parallelSlot)session.parallelSlot=parallelSlot;}
     for(let attempt=0;;attempt++){
       signal?.throwIfAborted();
       let entry=requests.get(slot);
@@ -125,10 +127,11 @@ export function createApiOrganizer({request,timeoutMs=300000,maxRetries=2,retryD
       }
       const report=()=>progress(`${config.model} · ${entry.chars?`已生成 ${entry.chars} 字符`:entry.bytes?'服务端已连接，等待结果':'等待 API 响应'} · 已用 ${Math.floor((Date.now()-entry.started)/1000)} 秒${attempt?` · 重试 ${attempt}/${maxRetries}`:''}`);
       report();const heartbeat=setInterval(report,1000);
-      try{return await waitForApi(entry.promise,signal);}
+      try{const result=await waitForApi(entry.promise,signal);if(requests.get(slot)===entry)requests.delete(slot);return result;}
       catch(error){
         clearInterval(heartbeat);
         signal?.throwIfAborted();
+        if(error.retryable){session.congested=true;await onSession();}
         if(!error.retryable||attempt>=maxRetries)throw error;
         const delay=retryDelayMs*2**attempt;
         progress(`${error.message}；${Math.ceil(delay/1000)} 秒后自动重试 ${attempt+1}/${maxRetries}（可能重复计费）…`);

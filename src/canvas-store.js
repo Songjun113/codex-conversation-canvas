@@ -10,6 +10,7 @@ function openCanvasDatabase(){
   return canvasDatabase;
 }
 async function canvasStore(key,value,remove=false){
+  if(window.canvasStandalone)return window.canvasStandalone.store(key,remove?null:value,arguments.length>1);
   const db=await openCanvasDatabase(),write=arguments.length>1;
   return new Promise((resolve,reject)=>{
     const tx=db.transaction('records',write?'readwrite':'readonly'),store=tx.objectStore('records');

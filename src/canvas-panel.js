@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Conversation canvas
 // @description  可缩放的任务树画布与原文定位
-// @version      0.3.4
+// @version      0.6.0
 // ==/UserScript==
 (function installCanvas() {
   if(!document.body){window.addEventListener('DOMContentLoaded',installCanvas,{once:true});return;}
-  if(window.top!==window || !/^app:\/\/-/.test(location.href))return;
+  const standalone=window.canvasStandalone;
+  const embedded=!!standalone?.embedded;
+  let manualThread='';
+  if(window.top!==window || (!standalone&&!/^app:\/\/-/.test(location.href)))return;
   window.__conversationCanvasCleanup?.();
   const previous=document.getElementById('conversation-canvas-host');
   previous?.shadowRoot?.querySelector('aside')?.classList.remove('open');
@@ -15,7 +18,7 @@
   /* canvas-interaction */
   /* canvas-annotations */
   function diagnostic(stage,detail={}){
-    try{window.__codexSessionDeleteBridge?.('/diagnostics/log',{event:'conversation_canvas',detail:{version:'0.3.4',stage,...detail}})?.catch(()=>{});}catch{}
+    try{window.__codexSessionDeleteBridge?.('/diagnostics/log',{event:'conversation_canvas',detail:{version:'0.6.0',stage,...detail}})?.catch(()=>{});}catch{}
   }
   diagnostic('native_installed',{pageOrigin:location.origin});
   const host=document.createElement('div');host.id='conversation-canvas-host';
@@ -49,14 +52,31 @@
     #jump-status{font-size:11px;color:var(--color-token-text-secondary,#777)}.message{border-bottom:1px solid var(--panel-border);padding:14px 0;scroll-margin-top:12px}.message pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere}.message.highlight{outline:4px solid var(--panel-border);background:var(--color-token-list-hover-background,#80808018)}
 
   /* canvas-style */
-  </style><aside role="complementary" aria-label="对话脉络" data-version="0.3.4"><div class="panel-header"><div class="heading"><strong>对话脉络</strong><p id="connection" role="status">当前对话的主线与分支</p></div><button id="retry" aria-label="重新连接" title="重新连接">↻</button><button id="close" aria-label="关闭画布" title="关闭">×</button></div><div class="canvas-body"><div class="canvas-toolbar"><button id="map-tab" class="active">任务树</button><button id="source-tab">对话原文</button><button id="pause-organize" hidden>暂停整理</button><button id="organize" title="GPT-5.6 Luna · 中 · 后台分批整理">整理脉络</button></div><p id="organization-status" role="status" hidden></p><div class="canvas-scroll"><section id="map-view"><div class="map-topbar"><div class="map-heading"><h2 id="title">当前对话</h2><div id="subtitle"></div></div><div class="tree-actions"><button id="expand-tree">展开全部</button><button id="collapse-tree">收起分支</button><button id="locate-current">当前推进</button><button id="fit-canvas">适应视图</button></div></div><div id="graph" role="region" aria-label="任务树画布，滚轮缩放，拖拽平移" tabindex="0"></div><div id="pending-tray"></div><div class="canvas-bottom"><span class="canvas-help">拖动画布平移 · 滚轮缩放 · 点击节点查看依据</span><div class="zoom-tools"><button id="zoom-out" aria-label="缩小画布">−</button><button id="canvas-zoom" title="恢复 100% 缩放">100%</button><button id="zoom-in" aria-label="放大画布">+</button></div></div></section><section id="source-view" hidden><div class="tree-actions"><button id="source-prev">上一页</button><span id="source-page-info"></span><button id="source-next">下一页</button><button id="source-list">消息列表</button></div><div id="transcript"></div></section></div><section id="details" aria-label="节点详情" hidden><div class="detail-head"><small id="detail-status"></small><button id="close-detail" aria-label="关闭节点详情">×</button></div><h2 id="detail-title"></h2><p id="detail-path"></p><p id="detail-description"></p><div id="source-actions"></div><p id="jump-status" role="status"></p></section></div></aside>`;
+    .canvas-toolbar{align-items:center;min-height:64px;flex-wrap:wrap}
+    .canvas-toolbar #organize{margin:10px 0 10px auto;min-height:42px;min-width:148px;padding:10px 22px;border:1px solid #245fc4;border-radius:10px;background:#2463d4;color:#fff;font-size:15px;font-weight:650;line-height:20px;box-shadow:0 2px 7px #2463d42b;white-space:nowrap}
+    .canvas-toolbar #organize:hover{background:#1d50ad}.canvas-toolbar #organize:disabled{opacity:.7;cursor:progress}.canvas-toolbar #organize:focus-visible{outline:3px solid #8cb6ff;outline-offset:3px}
+
+  </style><aside role="complementary" aria-label="对话脉络" data-version="0.6.0"><div class="panel-header"><div class="heading"><strong>对话脉络</strong><p id="connection" role="status">当前对话的主线与分支</p></div><button id="retry" aria-label="重新连接" title="重新连接">↻</button><button id="close" aria-label="关闭画布" title="关闭">×</button></div><div class="canvas-body"><div class="canvas-toolbar"><button id="map-tab" class="active">任务树</button><button id="source-tab">对话原文</button><button id="pause-organize" hidden>暂停整理</button><button id="organize" title="GPT-5.6 Luna · 中 · 后台分批整理">整理脉络</button></div><p id="organization-status" role="status" hidden></p><div class="canvas-scroll"><section id="map-view"><div class="map-topbar"><div class="map-heading"><h2 id="title">当前对话</h2><div id="subtitle"></div></div><div class="tree-actions"><button id="expand-tree">展开全部</button><button id="collapse-tree">收起分支</button><button id="locate-current">当前推进</button><button id="fit-canvas">适应视图</button></div></div><div id="graph" role="region" aria-label="任务树画布，滚轮缩放，拖拽平移" tabindex="0"></div><div id="pending-tray"></div><div class="canvas-bottom"><span class="canvas-help">拖动画布平移 · 滚轮缩放 · 点击节点查看依据</span><div class="zoom-tools"><button id="zoom-out" aria-label="缩小画布">−</button><button id="canvas-zoom" title="恢复 100% 缩放">100%</button><button id="zoom-in" aria-label="放大画布">+</button></div></div></section><section id="source-view" hidden><div class="tree-actions"><button id="source-prev">上一页</button><span id="source-page-info"></span><button id="source-next">下一页</button><button id="source-list">消息列表</button></div><div id="transcript"></div></section></div><section id="details" aria-label="节点详情" hidden><div class="detail-head"><small id="detail-status"></small><button id="close-detail" aria-label="关闭节点详情">×</button></div><h2 id="detail-title"></h2><p id="detail-path"></p><p id="detail-description"></p><div id="source-actions"></div><p id="jump-status" role="status"></p></section></div></aside>`;
   document.body.append(host);
   const pane=shadow.querySelector('aside');
-  pane.dataset.version='0.3.4';
+  let backdrop,threadPicker,threadCursor=null;const inertBackground=new Map();
+  function setModalBackground(open){if(!embedded)return;if(open){for(const child of document.body.children)if(child!==host){inertBackground.set(child,child.inert);child.inert=true;}}else{for(const [child,value]of inertBackground)child.inert=value;inertBackground.clear();}}
+  if(embedded){
+    pane.setAttribute('role','dialog');pane.setAttribute('aria-modal','true');pane.tabIndex=-1;
+    const modalStyle=document.createElement('style');modalStyle.textContent='aside{inset:60px 18px 18px!important;width:auto!important;z-index:2147483001;border:1px solid var(--panel-border);border-radius:12px;box-shadow:0 16px 70px #0005;overflow:hidden}.canvas-backdrop{position:fixed;inset:0;background:#0004;z-index:2147483000}.thread-picker{max-width:250px;font:inherit;padding:5px;color:inherit;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:6px}';shadow.append(modalStyle);
+    backdrop=document.createElement('div');backdrop.className='canvas-backdrop';backdrop.hidden=true;pane.before(backdrop);
+    threadPicker=document.createElement('select');threadPicker.className='thread-picker';threadPicker.setAttribute('aria-label','选择本机对话');threadPicker.hidden=true;pane.querySelector('.panel-header').append(threadPicker);
+    threadPicker.onchange=()=>{if(threadPicker.value==='__more__'){loadThreadChoices(false);return;}manualThread=threadPicker.value;sync(true);};
+  }
+  async function loadThreadChoices(reset=true){
+    threadPicker.hidden=false;if(reset){threadCursor=null;threadPicker.replaceChildren(new Option('选择当前对话…',''));}
+    threadPicker.disabled=true;try{const page=await standalone.list(threadCursor);threadPicker.querySelector('option[value="__more__"]')?.remove();for(const t of page.data||[])if(![...threadPicker.options].some(o=>o.value===t.id))threadPicker.add(new Option((t.name||t.preview||t.id).slice(0,65),t.id));threadCursor=page.nextCursor;if(threadCursor)threadPicker.add(new Option('加载更多对话…','__more__'));threadPicker.value=manualThread;}catch(e){status(e.message);}finally{threadPicker.disabled=false;}
+  }
+  pane.dataset.version='0.6.0';
   const settingsButton=document.createElement('button');settingsButton.id='organizer-settings';settingsButton.textContent='⚙';settingsButton.title='整理设置';settingsButton.setAttribute('aria-label','整理设置');
   shadow.getElementById('retry').before(settingsButton);
   const settingsForm=document.createElement('form');settingsForm.id='api-settings';settingsForm.hidden=true;settingsForm.setAttribute('aria-label','整理设置');
-  settingsForm.innerHTML=`<h2>整理设置</h2><fieldset id="api-fields"><label>整理通道<select id="api-channel"><option value="native">Codex 后台 · 5.6 Luna · 中</option><option value="external">外接 API · OpenAI 兼容</option></select></label><div id="api-external" hidden><label>API 地址<input id="api-url" type="url" placeholder="https://api.example.com/v1" autocomplete="off"></label><label>模型名称<input id="api-model" placeholder="服务商提供的模型 ID" autocomplete="off"></label><label>整理速度<select id="api-speed"><option value="fast">快速整理（DeepSeek V4 关闭思考）</option><option value="provider">服务商默认推理</option></select></label><p class="note">快速模式保留来源校验；其他服务商的推理参数保持默认。临时连接错误最多自动重试 2 次。</p><label>API Key<input id="api-key" type="password" autocomplete="off" spellcheck="false"></label><label class="remember-key"><input id="api-remember" type="checkbox">记住密钥（在本机明文保存）</label><p class="note">默认仅本次加载有效。整理时会将待整理对话及相关节点摘要发送至上面的 API 地址；连接测试仅发送一条测试指令。</p><button type="button" id="api-test">测试连接</button></div><p id="api-native-note" class="note">静默分批整理，固定使用 GPT-5.6 Luna、中等推理。</p><div class="tree-actions"><button type="submit">保存设置</button><button type="button" id="api-cancel">返回任务树</button></div></fieldset><p id="api-status" role="status"></p>`;
+  settingsForm.innerHTML=`<h2>整理设置</h2><fieldset id="api-fields"><label>整理通道<select id="api-channel"><option value="native">Codex 后台 · 5.6 Luna · 中</option><option value="external">外接 API · OpenAI 兼容</option></select></label><div id="api-external" hidden><label>API 地址<input id="api-url" type="url" placeholder="https://api.example.com/v1" autocomplete="off"></label><label>模型名称<input id="api-model" placeholder="服务商提供的模型 ID" autocomplete="off"></label><label>概括并发数<select id="api-concurrency"><option value="1">1 路</option><option value="2">2 路</option><option value="4" selected>4 路（推荐）</option><option value="8">8 路</option><option value="16">16 路</option><option value="32">32 路</option><option value="64">64 路</option><option value="128">128 路</option></select></label><label>整理速度<select id="api-speed"><option value="fast">快速整理（DeepSeek V4 关闭思考）</option><option value="provider">服务商默认推理</option></select></label><p class="note">快速模式保留来源校验；其他服务商的推理参数保持默认。临时连接错误最多自动重试 2 次。</p><label>API Key<input id="api-key" type="password" autocomplete="off" spellcheck="false"></label><label class="remember-key"><input id="api-remember" type="checkbox">记住密钥（在本机明文保存）</label><p class="note">默认仅本次加载有效。整理时会将待整理对话及相关节点摘要发送至上面的 API 地址；连接测试仅发送一条测试指令。</p><button type="button" id="api-test">测试连接</button></div><p id="api-native-note" class="note">静默分批整理，固定使用 GPT-5.6 Luna、中等推理。</p><div class="tree-actions"><button type="submit">保存设置</button><button type="button" id="api-cancel">返回任务树</button></div></fieldset><p id="api-status" role="status"></p>`;
   shadow.querySelector('.canvas-body').append(settingsForm);
   const settingsStyle=document.createElement('style');settingsStyle.textContent='#api-settings{position:absolute;inset:0;z-index:4;overflow:auto;padding:16px;background:var(--panel-bg);font-size:12px;line-height:1.6}#api-settings fieldset{border:0;padding:0;margin:0;min-width:0}#api-settings label{display:block;margin:12px 0}#api-settings input:not([type=checkbox]),#api-settings select{box-sizing:border-box;width:100%;padding:7px 8px;margin-top:4px;background:var(--panel-bg);color:inherit;border:1px solid var(--panel-border);border-radius:6px;font:inherit}#api-settings .remember-key{display:flex;align-items:center;gap:6px;font-size:11px}#api-settings button{font:inherit;border:1px solid var(--panel-border);border-radius:5px;background:none;color:inherit;padding:5px 8px;cursor:pointer}#api-settings button:disabled{opacity:.5}#api-status{overflow-wrap:anywhere}';shadow.append(settingsStyle);
   const loadingText=shadow.getElementById('connection'),retry=shadow.getElementById('retry');
@@ -76,7 +96,8 @@
     const surface=[...document.querySelectorAll('[data-testid="app-shell-header-context-menu-surface"]')].find(visible);
     const header=surface?.closest('header')||[...document.querySelectorAll('header')].find(visible);
     const container=surface||header;
-    if(!container){toggle.remove();return;}
+    if(!container){if(embedded){if(toggle.parentElement!==document.body)document.body.append(toggle);toggle.style.cssText='position:fixed;right:20px;top:76px;z-index:2147482999';toggle.hidden=false;}else toggle.remove();return;}
+    toggle.style.cssText='';
     let group=[...container.querySelectorAll('[data-app-shell-header-obstacle].ms-auto')].filter(visible).at(-1)||[...container.querySelectorAll('.ms-auto')].filter(visible).at(-1);
     if(!group){
       if(!ownedGroup||ownedGroup.parentElement!==container){ownedGroup?.remove();ownedGroup=document.createElement('div');ownedGroup.className='ms-auto flex shrink-0 items-center gap-1.5';ownedGroup.setAttribute('data-app-shell-header-obstacle','true');ownedGroup.style.cssText='margin-left:auto;display:flex;flex-shrink:0;align-items:center;pointer-events:auto';container.append(ownedGroup);}
@@ -85,7 +106,7 @@
     if(toggle.parentElement!==group)group.prepend(toggle);
     const nextToolbar=header||surface;
     if(toolbar!==nextToolbar){boundsObserver.disconnect();if(nextToolbar)boundsObserver.observe(nextToolbar);toolbar=nextToolbar;}
-    toggle.hidden=!currentId();
+    toggle.hidden=!embedded&&!currentId();
     updatePanelBounds();
   }
   function scheduleMount(){if(!mountFrame)mountFrame=requestAnimationFrame(mountEntry);}
@@ -103,13 +124,14 @@
   let organizing=null,historyAbort=null;
   const nativeReadTasks=new Set(),historyCache=persistentHistoryCache();
   let organizationAbort=new AbortController();
-  let organizerConfig={channel:'native'},testingApi=false,activeApiTester=null;
+  let organizerConfig={channel:standalone?'external':'native'},testingApi=false,activeApiTester=null;
   const externalOrganizer=createApiOrganizer({request:nativeApiRequest});
-  const settingsReady=canvasStore('organizer-settings').then(value=>{if(value)organizerConfig=value;updateOrganizerTitle();}).catch(()=>{$('api-status').textContent='设置读取失败，请重新保存配置。';});
-  function updateOrganizerTitle(){$('organize').title=organizerConfig.channel==='external'?`外接 API · ${organizerConfig.model||'待配置'} · 后台分批整理`:'GPT-5.6 Luna · 中 · 后台分批整理';}
+  const settingsReady=canvasStore('organizer-settings').then(value=>{if(value)organizerConfig=value;if(standalone)organizerConfig.channel='external';updateOrganizerTitle();}).catch(()=>{$('api-status').textContent='设置读取失败，请重新保存配置。';});
+  function updateOrganizerTitle(){$('organize').title=organizerConfig.channel==='external'?`外接 API · ${organizerConfig.model||'待配置'} · 并行概括与全局编排`:'GPT-5.6 Luna · 中 · 后台分批整理';}
+  if(standalone){shadow.querySelector('#api-channel option[value="native"]')?.remove();shadow.querySelector('#api-channel').value='external';}
   function showApiFields(){const external=$('api-channel').value==='external';$('api-external').hidden=!external;$('api-native-note').hidden=external;for(const field of $('api-external').querySelectorAll('input,select,button'))field.disabled=!external;}
-  function readApiForm(){return apiConfig({channel:$('api-channel').value,baseUrl:$('api-url').value,model:$('api-model').value,key:$('api-key').value,remember:$('api-remember').checked,speed:$('api-speed').value});}
-  settingsButton.onclick=async()=>{await settingsReady;if(disposed||organizing)return;for(const [name,value] of [['channel',organizerConfig.channel],['url',organizerConfig.baseUrl],['model',organizerConfig.model],['key',organizerConfig.key]])$(`api-${name}`).value=value||'';$('api-remember').checked=!!organizerConfig.remember;$('api-speed').value=organizerConfig.speed||'fast';showApiFields();settingsForm.hidden=false;};
+  function readApiForm(){return apiConfig({channel:$('api-channel').value,baseUrl:$('api-url').value,model:$('api-model').value,key:$('api-key').value,remember:$('api-remember').checked,speed:$('api-speed').value,concurrency:Number($('api-concurrency').value)});}
+  settingsButton.onclick=async()=>{await settingsReady;if(disposed||organizing)return;for(const [name,value] of [['channel',organizerConfig.channel],['url',organizerConfig.baseUrl],['model',organizerConfig.model],['key',organizerConfig.key]])$(`api-${name}`).value=value||'';$('api-remember').checked=!!organizerConfig.remember;$('api-speed').value=organizerConfig.speed||'fast';$('api-concurrency').value=String(organizerConfig.concurrency||4);showApiFields();settingsForm.hidden=false;};
   $('api-channel').onchange=showApiFields;
   $('api-cancel').onclick=()=>{settingsForm.hidden=true;$('api-key').value='';};
   settingsForm.onsubmit=async event=>{event.preventDefault();if(organizing||testingApi)return;try{const next=readApiForm();await canvasStore('organizer-settings',storedApiConfig(next));externalOrganizer.dispose();organizerConfig=next;updateOrganizerTitle();$('api-status').textContent='设置已保存。返回任务树后点击整理脉络。';$('api-key').value='';settingsForm.hidden=true;organizationStatus(`已切换至 ${next.channel==='external'?`外接 API · ${next.model}`:'Codex 后台 · 5.6 Luna · 中'}，点击整理后生效。`);}catch(error){$('api-status').textContent=error.message;}};
@@ -133,10 +155,11 @@
   async function hydrateAnnotations(id){
     const record=await canvasStore(`tree:${id}`);recordCache.set(id,record);
     if(active===id&&!organizing){
-      $('organize').textContent=record?.job?'继续整理':record?.published?.done?'增量整理':'整理脉络';
+      $('organize').textContent=record?.job?(record.job.phase==='review'?'继续复盘':'继续整理'):record?.published?.done?'增量整理与复盘':'整理脉络';
       if(!data&&record?.job)organizationStatus(`已恢复整理进度 · 已保存 ${record.job.state.batchCount} 批，点击「继续整理」接续${record.job.kind==='rebuild'?'；原任务树保留至重新整理完成':''}`);
     }
     if(record?.published){annotationCache.set(id,record.published);return;}
+    if(standalone)return;
     try{const legacy=JSON.parse(localStorage.getItem(`conversation-canvas:organized:${id}`));if(legacy?.threadId===id&&Array.isArray(legacy.nodes))annotationCache.set(id,legacy);}catch{}
   }
   function organizationStatus(text){$('organization-status').hidden=!text;$('organization-status').textContent=text;}
@@ -155,22 +178,22 @@
       const snapshot=data,old=storedAnnotations(id);
       const record=recordCache.get(id)||{published:old.nodes.length?old:null};
       const applyGraph=result=>{annotationCache.set(id,result);if(!disposed&&active===id){data={...data,...buildGraph(data.messages,result)};selected=null;$('details').hidden=true;render();status(`已同步${nativeReadTasks.has(id)?'（原生分页）':''} · ${result.nodes.length} 个任务节点`);}};
-      const showProgress=text=>{if(active!==id)return;const job=recordCache.get(id)?.job;const repair=job?.pending?.repair;organizationStatus(`${job?.kind==='rebuild'?'重整中，当前展示上次结果 · ':''}${repair?`补正 ${repair.attempt}/2 · `:''}${text}`);};
-      const saved=await organizeLong({messages:snapshot.messages,record,signal,compact:config.channel==='external',
+      const showProgress=text=>{if(active!==id)return;$('organize').textContent=recordCache.get(id)?.job?.phase==='review'?'正在复盘…':recordCache.get(id)?.job?.phase==='brief'?'正在概括…':'正在编排…';const job=recordCache.get(id)?.job;const repair=job?.pending?.repair;organizationStatus(`${job?.kind==='rebuild'?'重整中，当前展示上次结果 · ':''}${repair?`补正 ${repair.attempt}/2 · `:''}${text}`);};
+      const saved=await organizeLong({messages:snapshot.messages,record,signal,review:true,compact:config.channel==='external',parallel:config.channel==='external',concurrency:config.concurrency,
         save:async document=>{await canvasStore(`tree:${id}`,document);recordCache.set(id,document);},
         progress:showProgress,onGraph:applyGraph,
         run:(prompt,requestId,session,onSession)=>config.channel==='external'
-          ?externalOrganizer.run(config,prompt,requestId,session,onSession,signal,text=>showProgress(`第 ${(recordCache.get(id)?.job?.state?.batchCount||0)+1} 批 · ${text}`))
+          ?externalOrganizer.run(config,prompt,requestId,session,onSession,signal,text=>{if(!['brief','global'].includes(recordCache.get(id)?.job?.phase))showProgress(`第 ${(recordCache.get(id)?.job?.state?.batchCount||0)+1} 批 · ${text}`);})
           :nativeSideChat(id,prompt,text=>showProgress(`第 ${(recordCache.get(id)?.job?.state?.batchCount||0)+1} 批 · ${text}`),signal,{session,onSession,requestId})});
-      if(!disposed&&active===id)organizationStatus(`整理完成 · ${saved.published.nodes.length} 个任务节点，进度已保存；新增消息可增量整理`);
+      if(!disposed&&active===id)organizationStatus(`整理与逻辑复盘完成 · ${saved.published.nodes.length} 个任务节点，进度已保存；新增消息将补充概括并重新编排`);
     }catch(error){if(!disposed&&active===id)organizationStatus(error.name==='AbortError'?'已暂停，已完成批次保留。后台模型可能仍在运行，点击继续可接收结果。':`整理暂未完成：${error.message}。已完成批次保留，点击继续重试。`);}
-    finally{organizing=null;if(!disposed){$('organize').disabled=false;settingsButton.disabled=false;$('organize').textContent=recordCache.get(active)?.job?'继续整理':'增量整理';$('pause-organize').hidden=true;}}
+    finally{organizing=null;if(!disposed){$('organize').disabled=false;settingsButton.disabled=false;$('organize').textContent=recordCache.get(active)?.job?(recordCache.get(active).job.phase==='review'?'继续复盘':'继续整理'):'增量整理与复盘';$('pause-organize').hidden=true;}}
   }
   function currentId(){
-    const route=(location.href.match(uuid)||[])[0];if(route)return route;
+    const route=((standalone&&!embedded?(new URL(location.href).searchParams.get('thread')||''):location.href).match(uuid)||[])[0];if(route)return route;
     const rows=[...document.querySelectorAll('[data-app-action-sidebar-thread-id]')].filter(row=>['page','true'].includes(row.getAttribute('aria-current'))||row.querySelector('[aria-current="page"],[aria-current="true"]'));
     const ids=[...new Set(rows.map(row=>(`${row.getAttribute('data-app-action-sidebar-thread-id')} ${row.getAttribute('href')} ${row.querySelector('a')?.getAttribute('href')}`.match(uuid)||[])[0]).filter(Boolean))];
-    return ids.length===1?ids[0]:'';
+    return ids.length===1?ids[0]:manualThread;
   }
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function status(text){loadingText.textContent=text;}
@@ -210,7 +233,7 @@
       const i=index+sourceOffset;
       const m=data.messages.find(m=>m.id===id);if(!m)continue;
       const source=document.createElement('button');source.textContent=n.sources.length>1?`查看原文 ${i+1}`:'查看对应原文';source.onclick=()=>showSource(id,n.evidence?.find(e=>e.messageId===id)?.start||0);$('source-actions').append(source);
-      const jump=document.createElement('button');jump.textContent='定位 Codex 对话';const thread=data.threadId;jump.onclick=()=>jumpToMessage(thread,m);$('source-actions').append(jump);
+      const jump=document.createElement('button');jump.textContent=standalone?'在画布中定位原文':'定位 Codex 对话';const thread=data.threadId;jump.onclick=()=>jumpToMessage(thread,m);$('source-actions').append(jump);
     }
     if(n.sources.length>10){for(const [label,offset] of [['前 10 个来源',Math.max(0,sourceOffset-10)],['后 10 个来源',sourceOffset+10]]){const button=document.createElement('button');button.textContent=label;button.disabled=offset>=n.sources.length||offset===sourceOffset;button.onclick=()=>detail(n.id,offset);$('source-actions').append(button);}}
     if(n.revisions?.length){
@@ -222,6 +245,7 @@
   }
   const normalize=s=>String(s||'').replace(/\s+/g,'').replace(/[*#`]/g,'');
   async function jumpToMessage(threadId,message){
+    if(standalone){showSource(message.id);return;}
     if(currentId()!==threadId){$('jump-status').textContent='当前任务已切换，请重新打开节点。';return;}
     let target=nativeMessageTarget(document,message.id),navigationState=message.turnId?'unavailable':'missing-turn';
     if(!target&&message.turnId){
@@ -250,6 +274,7 @@
     setTimeout(()=>{if(disposed||currentId()!==threadId)return;const r=target.getBoundingClientRect();$('jump-status').textContent=target.isConnected&&r.height>0&&r.bottom>0&&r.top<innerHeight?'已定位并高亮原聊天消息。':'消息已找到，滚动尚未完成。';},700);
   }
   async function readCanvasSource(id,signal,progress){
+    if(standalone)return standalone.read(id,signal);
     if(!nativeReadTasks.has(id)){
       let result;
       try{
@@ -287,16 +312,20 @@
         data=result.kind==='canvas-messages'?{threadId:id,title:storedAnnotations(id).title||'当前对话',messages:result.messages,...buildGraph(result.messages,storedAnnotations(id))}:graphFromExport(result,id,storedAnnotations(id));revision=result.content;render();
         diagnostic('native_data',{nodeCount:data.nodes.length,messageCount:data.messages.length});
       }
-      status(`已同步${nativeReadTasks.has(id)?'（原生分页）':''} · ${data.nodes.filter(n=>n.summaryKind!=='原文摘录').length} 个任务节点`);
+      status(result.offline?result.warning:`已同步${standalone?(result.source==='local-files'?'（本地历史）':'（官方接口）'):nativeReadTasks.has(id)?'（原生分页）':''} · ${data.nodes.filter(n=>n.summaryKind!=='原文摘录').length} 个任务节点`);
     }catch(e){
       if(!disposed&&seq===requestSequence){status(`读取失败：${e.message}`);diagnostic('native_error',{message:e.message});}
     }finally{if(seq===requestSequence)pending=null;}
   }
-  function closePanel(){pane.classList.remove('open');toggle.setAttribute('aria-expanded','false');}
+  function closePanel(){setModalBackground(false);if(backdrop)backdrop.hidden=true;pane.classList.remove('open');toggle.setAttribute('aria-expanded','false');}
   $('organize').onclick=organize;
   $('pause-organize').onclick=()=>organizationAbort.abort();
   retry.onclick=()=>sync(true);
-  toggle.onclick=()=>{const open=pane.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open));updatePanelBounds();if(open){sync(true);taskCanvas.refresh();}};
+  toggle.onclick=async()=>{const open=!pane.classList.contains('open');if(!open){closePanel();return;}pane.classList.add('open');toggle.setAttribute('aria-expanded','true');updatePanelBounds();if(backdrop){backdrop.hidden=false;setModalBackground(true);pane.focus();}
+    if(embedded&&!currentId())await loadThreadChoices();
+    sync(true);taskCanvas.refresh();
+  };
+  if(backdrop)backdrop.onclick=()=>{closePanel();toggle.focus();};
   $('close').onclick=()=>{closePanel();toggle.focus();};
   $('pending-tray').addEventListener('toggle',e=>{if(e.target.classList?.contains('pending-messages'))pendingOpen=e.target.open;},true);
   $('pending-tray').onclick=e=>{
@@ -317,9 +346,11 @@
   $('transcript').onclick=e=>{const target=e.target.closest('[data-source-full]');if(target)showSource(target.dataset.sourceFull);};
   $('map-tab').onclick=()=>tab('map');$('source-tab').onclick=()=>tab('source');$('close-detail').onclick=()=>{$('details').hidden=true;};
   const observer=new MutationObserver(scheduleMount);observer.observe(document.body,{childList:true,subtree:true});
-  const onEscape=e=>{if(e.key==='Escape'&&pane.classList.contains('open')){if(!settingsForm.hidden){settingsForm.hidden=true;$('api-key').value='';}else if(!$('details').hidden)$('details').hidden=true;else{closePanel();toggle.focus();}}};
+  const onEscape=e=>{if(embedded&&e.key==='Tab'&&pane.classList.contains('open')){const focusable=[...pane.querySelectorAll('button,input,select,[tabindex="0"]')].filter(el=>!el.disabled&&el.getClientRects().length);const first=focusable[0],last=focusable.at(-1);if(e.shiftKey&&(shadow.activeElement===first||shadow.activeElement===pane)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&shadow.activeElement===last){e.preventDefault();first?.focus();}}if(e.key==='Escape'&&pane.classList.contains('open')){if(!settingsForm.hidden){settingsForm.hidden=true;$('api-key').value='';}else if(!$('details').hidden)$('details').hidden=true;else{closePanel();toggle.focus();}}};
   window.addEventListener('resize',updatePanelBounds);window.addEventListener('keydown',onEscape);
-  const timer=setInterval(()=>{const hidden=!currentId();if(toggle.hidden!==hidden)toggle.hidden=hidden;if(pane.classList.contains('open')){sync();if(hidden)closePanel();}},1500);
-  mountEntry();
-  window.__conversationCanvasCleanup=()=>{disposed=true;boundsObserver.disconnect();taskCanvas.dispose();activeApiTester?.dispose();externalOrganizer.dispose();historyAbort?.abort();organizationAbort.abort();requestSequence++;clearInterval(timer);observer.disconnect();cancelAnimationFrame(mountFrame);window.removeEventListener('resize',updatePanelBounds);window.removeEventListener('keydown',onEscape);toggle.remove();ownedGroup?.remove();entryStyle.remove();host.remove();};
+  const timer=setInterval(()=>{const hidden=!embedded&&!currentId();if(toggle.hidden!==hidden)toggle.hidden=hidden;if(pane.classList.contains('open')&&(!standalone||!document.hidden)){sync();if(hidden)closePanel();}},1500);
+  const onThreadChange=()=>{if(standalone){pane.classList.add('open');toggle.setAttribute('aria-expanded','true');sync(true);taskCanvas.refresh();}};
+  window.addEventListener('canvas-thread-change',onThreadChange);
+  mountEntry();if(standalone&&!embedded&&currentId())onThreadChange();
+  window.__conversationCanvasCleanup=()=>{setModalBackground(false);disposed=true;boundsObserver.disconnect();taskCanvas.dispose();activeApiTester?.dispose();externalOrganizer.dispose();historyAbort?.abort();organizationAbort.abort();requestSequence++;clearInterval(timer);observer.disconnect();cancelAnimationFrame(mountFrame);window.removeEventListener('resize',updatePanelBounds);window.removeEventListener('canvas-thread-change',onThreadChange);window.removeEventListener('keydown',onEscape);toggle.remove();ownedGroup?.remove();entryStyle.remove();host.remove();};
 })();

@@ -1,3 +1,4 @@
+import {dialogueRanges} from './dialogue-material.mjs';
 export function parseMessage(record, fallbackId) {
   const p = record.payload;
   if (record.type !== 'response_item' || p?.type !== 'message' || !['user','assistant'].includes(p.role)) return null;
@@ -24,7 +25,7 @@ export function buildGraph(messages, annotations={nodes:[]}) {
   for(const id of annotations.incompleteSources||[])covered.delete(id);
   let previous = nodes.filter(n=>n.lane==='main').at(-1)?.id || null;
   for (const m of messages) {
-    if (covered.has(m.id) || (m.role==='assistant' && m.phase!=='final_answer')) continue;
+    if (!dialogueRanges(m).length || covered.has(m.id) || (m.role==='assistant' && m.phase!=='final_answer')) continue;
     nodes.push({id:`auto-${m.id}`,parent:annotations.schemaVersion===2?null:previous,lane:annotations.schemaVersion===2?'pending':'main',title:excerpt(m.text,34),summary:excerpt(m.text,160),description:m.text, status:'待整理',summaryKind:'原文摘录',sources:[m.id]});
     previous = `auto-${m.id}`;
   }

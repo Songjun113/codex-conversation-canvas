@@ -177,3 +177,43 @@ test('transcript pagination includes last message and reconstructs long Unicode 
   for(let part=0;part<first.total;part++){const page=transcriptPage(messages,{focusId:'m100',part});const raw=page.html.match(/<pre>([\s\S]*?)<\/pre>/)[1];assert.ok(!/[\uD800-\uDBFF]$/.test(raw));reconstructed+=raw;}
   assert.equal(reconstructed,text);assert.equal((transcriptPage(messages).html.match(/<article/g)||[]).length,20);
 });
+
+ test('dialogue filtering preserves decisions and source offsets, excluding artifacts from extraction and review',async()=>{
+  const fence='`'.repeat(3),code='const artifactPayload = 123;\n'.repeat(200);
+  const text='# Files mentioned by the user:\n## artifact.txt: C:/artifact.txt\n\n## My request:\n方案 A 因超时失败，改用分批读取。\n'+fence+'javascript\n'+code+fence+'\n保留失败原因，下一步验证方案 B。\n- [artifact.txt](C:/artifact.txt)';
+  const message={id:'dialogue',role:'user',text};
+  const h=await prepareHistory([message]);
+  const material=h.parts.map(p=>p.text).join('');
+  assert.ok(material.includes('方案 A 因超时失败'));assert.ok(material.includes('下一步验证方案 B'));
+  assert.ok(!material.includes('artifactPayload'));assert.ok(!material.includes('C:/artifact.txt'));
+  for(const p of h.parts)assert.equal(p.text,text.slice(p.start,p.end));
+  const store=storage();let requests=0;
+  const result=await organizeLong({messages:[message],save:store.save,run:async prompt=>{requests++;assert.ok(!prompt.includes('artifactPayload'));return answer(prompt);}});
+  const {reviewPrompt}=await import('./tree-review.mjs');
+  assert.ok(!reviewPrompt(result.published.nodes,result.published.nodes,'review',[message]).prompt.includes('artifactPayload'));
+  for(const e of result.published.nodes[0].evidence)assert.ok(text.slice(e.start,e.end).trim());
+  await organizeLong({messages:[message],record:result,save:store.save,run:async()=>{throw Error('unchanged input must not call model');}});
+  assert.equal(requests,1);assert.equal(message.text,text);
+ });
+ test('artifact-only messages never become pending tasks; short examples and failure evidence survive',async()=>{
+  const {dialogueExcerpt}=await import('./dialogue-material.mjs');const fence='`'.repeat(3);
+  const pure={id:'artifact',role:'assistant',phase:'final_answer',text:fence+'python\nprint(123)\n'+fence};
+  const h=await prepareHistory([pure]);assert.equal(h.parts.length,0);assert.deepEqual(h.ignoredSources,['artifact']);
+  assert.equal(buildGraph([pure]).nodes.length,0);
+  const result=await organizeLong({messages:[pure],save:async()=>{},run:async()=>{throw Error('no model call for artifacts');}});
+  assert.equal(buildGraph([pure],result.published).nodes.length,0);
+  const example={role:'user',text:'这里为什么失败？\n'+fence+'python\nx[0]\n'+fence};assert.equal(dialogueExcerpt(example),example.text);
+  const log={role:'user',text:'方案 A 失败。\n'+fence+'text\n'+'noise\n'.repeat(30)+'TypeError: missing field\n'+fence+'\n改用 B。'};
+  const excerpt=dialogueExcerpt(log);assert.match(excerpt,/TypeError: missing field/);assert.match(excerpt,/改用 B/);assert.ok(!excerpt.includes('noise'));
+  const reference={role:'user',text:'[方案依据](https://example.com/paper)'};assert.equal(dialogueExcerpt(reference),reference.text);
+ });
+ test('old material policy rebuilds without replacing published tree until success; new pending jobs resume',async()=>{
+  const messages=[msg('m','先尝试 A，再改为 B')],store=storage();
+  const old=await organizeLong({messages,save:store.save,run:async prompt=>answer(prompt)});
+  delete old.published.materialVersion;
+  await assert.rejects(organizeLong({messages,record:old,save:store.save,run:async()=>{throw Error('offline');}}),/offline/);
+  assert.deepEqual(store.value.published,old.published);assert.equal(store.value.job.kind,'rebuild');
+  const requestId=store.value.job.pending.requestId;
+  const next=await organizeLong({messages,record:store.value,save:store.save,run:async(prompt,id)=>{assert.equal(id,requestId);return answer(prompt);}});
+  assert.equal(next.published.materialVersion,1);assert.equal(next.job,null);
+ });
